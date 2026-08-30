@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import torch
 from torch import nn
-from torchvision.models import EfficientNet_B0_Weights, efficientnet_b0
+from torchvision.models import ConvNeXt_Tiny_Weights, convnext_tiny
 
 
 class FrequencyBranch(nn.Module):
@@ -37,8 +37,8 @@ class RedistributionAwareDetector(nn.Module):
 
     def __init__(self, pretrained: bool = True, use_frequency: bool = True) -> None:
         super().__init__()
-        weights = EfficientNet_B0_Weights.DEFAULT if pretrained else None
-        backbone = efficientnet_b0(weights=weights)
+        weights = ConvNeXt_Tiny_Weights.DEFAULT if pretrained else None
+        backbone = convnext_tiny(weights=weights)
         self.spatial = backbone.features
         self.spatial_pool = nn.AdaptiveAvgPool2d(1)
         self.use_frequency = use_frequency
@@ -46,10 +46,10 @@ class RedistributionAwareDetector(nn.Module):
         self.register_buffer("std", torch.tensor([0.229, 0.224, 0.225]).view(1, 3, 1, 1))
         if use_frequency:
             self.frequency = FrequencyBranch(output_dim=256)
-            fusion_dim = 1280 + 256
+            fusion_dim = 768 + 256
         else:
             self.frequency = None
-            fusion_dim = 1280
+            fusion_dim = 768
         self.head = nn.Sequential(
             nn.Linear(fusion_dim, 512), nn.GELU(), nn.Dropout(0.25), nn.Linear(512, 1)
         )
@@ -64,4 +64,3 @@ class RedistributionAwareDetector(nn.Module):
 
 def build_model(pretrained: bool = True, use_frequency: bool = True) -> RedistributionAwareDetector:
     return RedistributionAwareDetector(pretrained=pretrained, use_frequency=use_frequency)
-

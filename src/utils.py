@@ -45,7 +45,9 @@ def load_detector(checkpoint_path: str, device: torch.device):
     from src.model import build_model
 
     checkpoint = torch.load(checkpoint_path, map_location=device, weights_only=False)
+    architecture = checkpoint["model_config"].get("architecture", "convnext_tiny")
+    if architecture != "convnext_tiny":
+        raise ValueError(f"Unsupported checkpoint architecture: {architecture}")
     model = build_model(pretrained=False, use_frequency=checkpoint["model_config"]["use_frequency"])
     model.load_state_dict(checkpoint["model_state"])
     return model.to(device).eval(), checkpoint
-
