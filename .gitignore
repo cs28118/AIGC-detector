@@ -1,1 +1,9 @@
-AGENT.md
+__pycache__/
+*.py[cod]
+.venv/
+data/
+artifacts/
+checkpoints/
+*.pt
+*.pth
+*.onnx
