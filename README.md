@@ -1,103 +1,18 @@
-﻿## 5.1 Background
-
-Generative AI tools are making it easier than ever to create highly realistic synthetic images at scale. This creates new risks for online platforms, including misinformation, impersonation, fraud, and reduced trust in digital content. In practice, detection becomes even harder after images are compressed, cropped, reposted, or lightly edited, so robust methods matter more than lab-only accuracy.
-
-## 5.2 Problem Statement
-
-We want participants to build a prototype that can distinguish AI-generated images from authentic images with strong robustness under realistic post-processing and redistribution scenarios. The goal is not only to achieve good detection performance on clean data, but also to maintain accuracy after transformations such as blur, compression, color adjustment, cropping, or rescaling. Solutions should present a clear technical approach, an evaluation strategy, and thoughtful discussion of trade-offs such as robustness, generalisation, and false positives.
-
-**Note: We consider robustness against a subset of the following augmentataions.**
-
-| Transform | Parameters | Real-World Analog |
-| :--- | :--- | :--- |
-| JPEG Compression | quality = 90, 70, 50, 30 | Social-media re-encode, messaging |
-| Gaussian Blur | kernel σ = 0.5, 1.0, 2.0 | Out-of-focus |
-| Resize | scale 0.5× / 0.25× then upscale | Thumbnail generation |
-| Gaussian Noise | σ = 0.02, 0.05, 0.10 | Low-light sensor noise |
-| Color Jitter | brightness/contrast/sat. ±20% | Filter apps, auto-enhance |
-| Center Crop | crop 80% | Profile-picture cropping, framing |
-
-## 5.3 Constraints & Scope
-
-| Category | Constraints & Scope Details |
-| :--- | :--- |
-| In scope | Image-level AIGC detection, robustness to common image transformations, feature engineering, model design, evaluation design, error analysis, and explainability ideas |
-| Out of scope | Full production deployment, platform-wide moderation systems, and non-image modalities such as video or audio |
-| Limits | Assume a hackathon-scale prototype, limited compute, and no access to internal production systems. Teams should optimise for a convincing proof of concept rather than a production-grade service. **Note: Participants must use models with <2B parameters.** |
-| Allowed assumptions | Teams may use public or properly licensed datasets, create their own transformed test cases, and make reasonable assumptions about deployment context as long as those assumptions are stated clearly. |
-
-## 5.4 Available Resources & Data
-
-* Public or properly licensed image datasets for AIGC detection and image forensics.
-* Self-created transformed samples using operations such as blur, compression, cropping, color adjustment, or rescaling.
-* Public documentation for relevant machine learning and computer vision libraries.
-* Datasets:
-  * https://huggingface.co/datasets/saberzl/SID_Set
-  * https://www.kaggle.com/datasets/birdy654/cifake-real-and-ai-generated-synthetic-images
-  * https://modelscope.cn/datasets/hy2628982280/WildFake/summary
-    * For this modelscope dataset, please translate it via the translation button before use.
-
-**Validation Dataset (for Demonstration Purposes Only):**
-
-We choose **a subset of WildFake** for participants to demonstrate their models’ performance and track iterative improvements. This dataset serves only as a reference benchmark and will not contribute to the final score. **Do not use the following data during training.** Specifically:
-
-| Dataset | | # Num |
-| :--- | :--- | :--- |
-| Non-AIGC | COCO val2017 | 4998 |
-| AIGC | DALL·E Advanced | 8843 |
-
-## 5.5 Expected Deliverables
-
-1. **Written Project Description (via Devpost)**
-   * Provide a clear written description of your project that includes:
-     * How your solution addresses the problem statement
-     * Development tools used (e.g. VSCode, Colab, Jupyter)
-     * Models or APIs used
-     * Libraries and frameworks used (e.g. Hugging Face Transformers, PyTorch, scikit-learn, pandas)
-     * Datasets and assets used
-
-2. **Public Code/GitHub Repository**
-   * Submit a link to a public Code/GitHub repository containing:
-     * Well-structured, commented code covering all components of your solution
-     * A script that takes an image directory as input and outputs a confidence score for each image, indicating the likelihood that it is AIGC-generated. The output should be a JSON file containing `image_path` and `pred` for each image.
-     * A README file that includes:
-       * Project overview
-       * Setup and installation instructions
-       * Steps to reproduce your results
-       * A brief reflection on your solution's limitations and what you would improve given more time
-       * Team member contributions (if applicable, i.e. team participants, non-solo participants)
-
-3. **Demo Video**
-   * Submit a short video that:
-     * Demonstrates your solution working end-to-end (e.g. inference results, dashboard, model predictions)
-     * Is uploaded to YouTube and set to public visibility
-     * Is linked in your Devpost description
-     * Does not include third-party trademarks or copyrighted content without permission
-
-4. **Robustness Evaluation Summary**
-   * Include a compact table or visual summary comparing performance on clean images versus transformed images.
-
-5. **Error Analysis Note**
-   * Highlight representative false positives, false negatives, and any trade-offs in the proposed approach.
-
-## 5.6 Judging Criteria
-
-| Judging Criteria | Definition | Weight |
-| :--- | :--- | :--- |
-| **Technical Execution** | The solution demonstrates strong engineering fundamentals, such as well-structured code, thoughtful architecture, and effective use of APIs or models. The demo runs reliably, and the technical complexity reflects deliberate, capable decision-making. | **35%** |
-| **Innovation & Problem Insight** | The project demonstrates originality in both idea and approach. It stands out for the sharpness of its problem understanding — how clearly the team has framed the challenge, why it matters, and how directly the solution addresses it. | **20%** |
-| **Impact & Relevance** | The project has clear potential to deliver value to real users or stakeholders — with meaningful reach, tangible benefit, and relevance that goes beyond solving for the hackathon prompt alone. | **20%** |
-| **Feasibility & Practicality** | The solution is realistic and buildable beyond a prototype. The approach is technically and operationally sustainable — resource usage is proportionate, the architecture holds under real-world conditions, and the implementation is grounded rather than speculative. | **15%** |
-
-
-------------------------------------------------------------------------------------------------------------------------------------------------------------
 # AIGC Detector
 
 ## Project Overview
 
-AIGC Detector is an image-classification system that predicts whether an image is real or AI-generated. It uses a ConvNeXt Small model trained on the CIFAKE dataset and produces a prediction confidence score for each image.
+AIGC Detector is an image-classification system that predicts whether an image is real or AI-generated. The project also includes confidence calibration using temperature scaling and robustness evaluation on image data. This helps assess whether the model’s confidence scores remain meaningful when images are transformed.
 
-The project also includes confidence calibration using temperature scaling and robustness evaluation on image data. This helps assess whether the model’s confidence scores remain meaningful when images are transformed.
+The detector deliberately fuses semantic and forensic evidence instead of treating AIGC detection as a clean-image classification task.
+
+* **Spatial branch:** an ImageNet-initialised ConvNeXt-Small backbone learns semantic and texture cues.
+* **Forensic branch:** a differentiable multi-domain feature extractor operates on image luminance. It combines a high-pass residual and two-scale Haar-wavelet detail maps, three bands of 8x8 block-DCT energy, and a windowed global FFT magnitude spectrum.
+* **Robust training:** every training sample yields aligned clean and damaged views. The damaged view receives one or two sampled transforms: JPEG recompression, Gaussian blur, downscale/upscale, Gaussian noise, colour jitter, or centre crop. Classification loss is supplemented by prediction, feature, and forensic-reliability consistency losses.
+
+The manifest builder assigns deterministic group-safe train/validation/calibration splits. Evaluation corruptions are deterministic for each image and seed, enabling fair comparisons. The best checkpoint is selected by an equal-weight clean/robust AUC score, rather than clean AUC alone.
+
+> Selection score = 0.5 x AUC + 0.5 x Accuracy@0.5
 
 ## Features
 
@@ -108,7 +23,7 @@ The project also includes confidence calibration using temperature scaling and r
 - Evaluates performance on clean and transformed images
 - Saves prediction results in JSON format
 
-## Technologies Used
+## Tech stack Used
 
 - Python
 - PyTorch
@@ -116,168 +31,267 @@ The project also includes confidence calibration using temperature scaling and r
 - pandas
 - scikit-learn
 - Google Colab
-- Kaggle
-- CIFAKE dataset
 
 ## Setup and Installation
 
-### Clone the Repository
+Prerequisites: Python 3.10+ and PyTorch-compatible hardware. CUDA available GPU is highly recommended. CPU execution is supported.
 
-    git clone https://github.com/YOUR-USERNAME/YOUR-REPOSITORY.git
-    cd YOUR-REPOSITORY
+### Clone the Repository and Download Dependencies
 
-### Create a Virtual Environment
+```powershell
+git clone https://github.com/cs28118/AIGC-detector.git
+cd AIGC-detector
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+```
 
-    python -m venv venv
-
-For macOS and Linux:
-
-    source venv/bin/activate
-
-For Windows:
-
-    venv\Scripts\activate
-
-### Install Dependencies
-
-    pip install -r requirements.txt
-
-### Add the Model Checkpoint
-
-Place the trained model checkpoint at:
-
-    artifacts/convnext_small_robust/best.pt
-
-If the dataset is required, download and extract it into:
-
-    data/cifake/
-
-Expected directory structure:
-
-    data/cifake/
-    ├── train/
-    │   ├── REAL/
-    │   └── FAKE/
-    └── test/
-        ├── REAL/
-        └── FAKE/
+On macOS/Linux, activate the environment with `source .venv/bin/activate` instead.
 
 ## Running Inference
 
 To classify all images in a directory:
 
-    python predict.py \
-      --image-dir path/to/images \
-      --checkpoint artifacts/convnext_small_robust/best.pt \
-      --output predictions.json
+```powershell
+python -m src.infer \
+  --input-dir input_images_dir \
+  --checkpoint model_path \
+  --output artifacts/predictions.json \
+```
 
 The output JSON file contains the image path and prediction:
 
-    [
-      {
-        "image_path": "path/to/images/image1.jpg",
-        "pred": 0.9132
-      },
-      {
-        "image_path": "path/to/images/image2.png",
-        "pred": 0.0745
-      }
-    ]
+```
+[
+  {
+    "image_path": "path/to/images/image1.jpg",
+    "pred": 0.9132
+  },
+  {
+    "image_path": "path/to/images/image2.png",
+    "pred": 0.0745
+  }
+]
+```
 
 The `pred` value represents the estimated likelihood that the image is AI-generated. Values closer to `1` indicate a higher likelihood of AI generation, while values closer to `0` indicate a higher likelihood that the image is real.
 
 ## Reproducing Our Results
 
-### 1. Download the Dataset
+1. Download the Dataset
 
 The project uses the [CIFAKE dataset](https://www.kaggle.com/datasets/birdy654/cifake-real-and-ai-generated-synthetic-images) from Kaggle.
 
-    kaggle datasets download \
-      -d birdy654/cifake-real-and-ai-generated-synthetic-images \
-      -p data/cifake \
-      --unzip
+```powershell
+kaggle datasets download \
+  -d birdy654/cifake-real-and-ai-generated-synthetic-images \
+  -p data/cifake \
+  --unzip
+```
 
-### 2. Build the Dataset Manifest
+> We also use [GANGen](https://github.com/chuangchuangtan/FreqNet-DeepfakeDetection) and [UniversalFakeDetect](https://github.com/WisconsinAIVision/UniversalFakeDetect) datasets. For these two dataset, we pick similar amount from each subfolder and combine it with CiFake dataset.
 
-    python scripts/build_manifest.py \
-      --real-root data/cifake/train/REAL \
-      --ai-root data/cifake/train/FAKE \
-      --output manifests/cifake.csv \
-      --source cifake \
-      --ai-generator stable_diffusion \
-      --val-fraction 0.10 \
-      --calibration-fraction 0.05 \
-      --seed 42
+```
+Sampling cifake_colab.csv
+Available per label: {'train': 41757, 'val': 4967, 'calibration': 2356}
+Selected per label: {'train': 2550, 'val': 300, 'calibration': 150}
 
-### 3. Train the Model
+Sampling universalfake_1.csv
+Available per label: {'train': 852, 'val': 100, 'calibration': 48}
+Selected per label: {'train': 852, 'val': 100, 'calibration': 48}
 
-    python -m src.train \
-      --manifest manifests/cifake.csv \
-      --output-dir artifacts/convnext_small_robust \
-      --architecture convnext_small \
-      --epochs 12 \
-      --batch-size 16 \
-      --workers 2 \
-      --selection-workers 0 \
-      --selection-max-samples 2000 \
-      --learning-rate 2e-4 \
-      --device cuda
+Sampling universalfake_2.csv
+Available per label: {'train': 853, 'val': 100, 'calibration': 47}
+Selected per label: {'train': 853, 'val': 100, 'calibration': 47}
+
+Sampling universalfake_3.csv
+Available per label: {'train': 853, 'val': 104, 'calibration': 43}
+Selected per label: {'train': 853, 'val': 104, 'calibration': 43}
+
+Sampling universalfake_4.csv
+Available per label: {'train': 848, 'val': 99, 'calibration': 53}
+Selected per label: {'train': 848, 'val': 99, 'calibration': 53}
+
+Sampling universalfake_5.csv
+Available per label: {'train': 841, 'val': 110, 'calibration': 49}
+Selected per label: {'train': 841, 'val': 110, 'calibration': 49}
+
+Sampling universalfake_6.csv
+Available per label: {'train': 867, 'val': 89, 'calibration': 44}
+Selected per label: {'train': 867, 'val': 89, 'calibration': 44}
+
+Sampling universalfake_7.csv
+Available per label: {'train': 837, 'val': 110, 'calibration': 53}
+Selected per label: {'train': 837, 'val': 110, 'calibration': 53}
+
+Sampling universalfake_8.csv
+Available per label: {'train': 843, 'val': 120, 'calibration': 37}
+Selected per label: {'train': 843, 'val': 120, 'calibration': 37}
+
+Sampling self_synthesis_1.csv
+Available per label: {'train': 1689, 'val': 190, 'calibration': 93}
+Selected per label: {'train': 850, 'val': 100, 'calibration': 50}
+
+Sampling self_synthesis_2.csv
+Available per label: {'train': 1686, 'val': 209, 'calibration': 104}
+Selected per label: {'train': 850, 'val': 100, 'calibration': 50}
+
+Sampling self_synthesis_3.csv
+Available per label: {'train': 1662, 'val': 207, 'calibration': 102}
+Selected per label: {'train': 850, 'val': 100, 'calibration': 50}
+
+Sampling self_synthesis_4.csv
+Available per label: {'train': 1706, 'val': 185, 'calibration': 90}
+Selected per label: {'train': 850, 'val': 100, 'calibration': 50}
+
+Sampling self_synthesis_5.csv
+Available per label: {'train': 1689, 'val': 195, 'calibration': 104}
+Selected per label: {'train': 850, 'val': 100, 'calibration': 50}
+
+Sampling self_synthesis_6.csv
+Available per label: {'train': 1706, 'val': 207, 'calibration': 84}
+Selected per label: {'train': 850, 'val': 100, 'calibration': 50}
+
+Sampling self_synthesis_7.csv
+Available per label: {'train': 1682, 'val': 188, 'calibration': 105}
+Selected per label: {'train': 850, 'val': 100, 'calibration': 50}
+
+Sampling self_synthesis_8.csv
+Available per label: {'train': 1688, 'val': 206, 'calibration': 94}
+Selected per label: {'train': 850, 'val': 100, 'calibration': 50}
+
+Sampling self_synthesis_9.csv
+Available per label: {'train': 1678, 'val': 207, 'calibration': 104}
+Selected per label: {'train': 850, 'val': 100, 'calibration': 50}
+
+Final split and label counts:
+split        label
+calibration  0          974
+             1          974
+train        0        16994
+             1        16994
+val          0         2032
+             1         2032
+```
+
+2. Build an auditable manifest. Defaults create stable train (85%), validation (10%), and calibration (5%) splits, remove exact duplicates, and write an exclusion audit.
+
+```powershell
+python scripts/build_manifest.py \
+  --real-root data/cifake/train/REAL \
+  --ai-root data/cifake/train/FAKE \
+  --output manifests/cifake.csv \
+  --source cifake \
+  --ai-generator stable_diffusion \
+  --val-fraction 0.10 \
+  --calibration-fraction 0.05 \
+  --seed 42
+```
+
+3. Train the redistribution-aware detector. Selection evaluates clean, JPEG quality 30, blur sigma 2.0, 0.25x resize/upscale, and 80% centre crop. `best.pt` is selected by `0.5 x clean AUC + 0.5 x mean corrupted AUC`; `last.pt` is resumable.
+
+```powershell
+python -m src.train \
+  --manifest manifests/cifake.csv \
+  --output-dir artifacts/convnext_small_robust \
+  --architecture convnext_small \
+  --epochs 3 \
+  --batch-size 16 \
+  --workers 2 \
+  --selection-workers 0 \
+  --selection-max-samples 2000 \
+  --learning-rate 2e-4 \
+  --device cuda
+```
 
 For CPU training, replace `--device cuda` with `--device cpu`.
 
-### 4. Calibrate the Model
+4. Calibrate probabilities on the separate calibration split. Temperature scaling changes confidence calibration without changing ranking/AUC.
 
-    python -m src.calibrate \
-      --checkpoint artifacts/convnext_small_robust/best.pt \
-      --manifest manifests/cifake.csv \
-      --split calibration \
-      --output artifacts/convnext_small_robust/temperature.json \
-      --batch-size 64 \
-      --workers 2 \
-      --device cuda
+```powershell
+python -m src.calibrate \
+  --checkpoint artifacts/convnext_small_robust/best.pt \
+  --manifest manifests/cifake.csv \
+  --split calibration \
+  --output artifacts/convnext_small_robust/temperature.json \
+  --batch-size 64 \
+  --workers 2 \
+  --device cuda
+```
 
-### 5. Evaluate the Model
+5. Evaluate all documented redistribution conditions. The CSV includes ROC-AUC, threshold-0.5 accuracy, mean robust AUC, and the combined score.
 
-    python -m src.evaluate \
-      --checkpoint artifacts/convnext_small_robust/best.pt \
-      --manifest manifests/cifake.csv \
-      --split val \
-      --calibration artifacts/convnext_small_robust/temperature.json \
-      --output artifacts/convnext_small_robust/robustness.csv \
-      --batch-size 64 \
-      --workers 2 \
-      --device cuda
+```powershell
+python -m src.evaluate \
+  --checkpoint artifacts/convnext_small_robust/best.pt \
+  --manifest manifests/cifake.csv \
+  --split val \
+  --calibration artifacts/convnext_small_robust/temperature.json \
+  --output artifacts/convnext_small_robust/robustness.csv \
+  --batch-size 64 \
+  --workers 2 \
+  --device cuda
+```
 
-The evaluation results will be saved to:
-
-    artifacts/convnext_small_robust/robustness.csv
+> The evaluation results will be saved to:
+> artifacts/convnext_small_robust/robustness.csv
 
 ## Limitations
 
-The model is trained primarily on the CIFAKE dataset, so its performance may not generalize to every type of real or AI-generated image. New image-generation models may produce visual patterns that differ from those seen during training.
+The model is trained primarily on the limited dataset, so its performance may not generalize to every type of real or AI-generated image. New image-generation models may produce visual patterns that differ from those seen during training. 
 
-The detector may also be affected by:
+The system returns a probability, not provenance therefore should be treated as an estimate rather than definitive proof that an image is AI-generated. The confidence score also depends on the quality and diversity of the training data. Even after calibration, the model may be uncertain or overconfident when given unfamiliar images.
 
-- Image compression
-- Resizing
-- Cropping
-- Screenshots
-- Post-processing
-- Images from unfamiliar AI generators
-
-A prediction should therefore be treated as an estimate rather than definitive proof that an image is AI-generated.
-
-The confidence score also depends on the quality and diversity of the training data. Even after calibration, the model may be uncertain or overconfident when given unfamiliar images.
+The prototype also lacks adversarial-attack evaluation, metadata provenance checks, image-region localisation, and production serving/monitoring.
 
 ## Future Improvements
 
 Given more time, we would:
 
-- Add images generated by more AI models
-- Include a wider variety of real-world photographs
-- Test additional transformations and compression levels
-- Improve cross-dataset and cross-generator evaluation
-- Perform more detailed false-positive and false-negative analysis
-- Build a web interface for image upload and result visualization
-- Package the model for easier installation and use
-- Explore ensemble models and vision transformers
+1. Train with a more diverse dataset.
+2. Include a wider variety of real-world photographs
+3. Test additional transformations and compression levels
+4. Improve cross-dataset and cross-generator evaluation
+5. Perform more detailed false-positive and false-negative analysis
+6. Build a web UI for easy access to model by image upload and result visualization
+7. Explore more ensemble models and vision transformers
+
+## Robustness Evaluation Summary
+
+The following is the result of applying different transformation to test dataset and eval using the latest 'v2.0_model.py`.
+
+| Condition | ROC AUC | Accuracy@0.5 | N |
+| :--- | :--- | :--- | :--- |
+| clean | 0.997094 | 0.980069 | 4064 |
+| jpeg30 | 0.966645 | 0.897884 | 4064 |
+| jpeg50 | 0.977111 | 0.926181 | 4064 |
+| jpeg70 | 0.981740 | 0.925689 | 4064 |
+| jpeg90 | 0.990953 | 0.949803 | 4064 |
+| blur0.5 | 0.999351 | 0.988435 | 4064 |
+| blur1.0 | 0.974512 | 0.938238 | 4064 |
+| blur2.0 | 0.965614 | 0.878691 | 4064 |
+| resize0.5 | 0.986163 | 0.956201 | 4064 |
+| resize0.25 | 0.953449 | 0.887303 | 4064 |
+| noise0.02 | 0.992341 | 0.961614 | 4064 |
+| noise0.05 | 0.981170 | 0.929134 | 4064 |
+| noise0.10 | 0.941608 | 0.860974 | 4064 |
+| color | 0.995373 | 0.973179 | 4064 |
+| crop | 0.996847 | 0.981545 | 4064 |
+| mean_robust | 0.978777 | NaN | 4064 |
+| combined_score | 0.987935 | NaN | 4064 |
+
+The equal-weight clean/robust AUC is **0.9971**. JPEG, strong blur, strong noise, massive resize (0.25) highly affect the result.
+
+## Project tools and reference
+
+* **Language and framework:**
+  - Python, PyTorch, TorchVision (ConvNeXt-Small), NumPy, Pillow, pandas, scikit-learn, tqdm
+  - Exact minimum versions are listed in `requirements.txt`.
+* **Project scripts:**
+  - `scripts/build_manifest.py` creates deduplicated group-safe manifests
+  - `src/train.py`, `src/calibrate.py`, `src/evaluate.py`, and `src/infer.py` cover the model lifecycle.
+* **Datasets:**
+  1. [CIFAKE](https://www.kaggle.com/datasets/birdy654/cifake-real-and-ai-generated-synthetic-images)
+  2. [GANGen](https://github.com/chuangchuangtan/FreqNet-DeepfakeDetection)
+  3. [UniversalFakeDetect](https://github.com/WisconsinAIVision/UniversalFakeDetect)
