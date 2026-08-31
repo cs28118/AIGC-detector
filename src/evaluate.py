@@ -11,29 +11,16 @@ from sklearn.metrics import accuracy_score, roc_auc_score
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
-from src.augmentations import EvaluationTransform, apply_condition
+from src.augmentations import EVALUATION_CONDITIONS, EvaluationTransform, deterministic_corruption
 from src.data import ImageDataset, read_manifest
-from src.utils import device_from_arg, load_detector, load_temperature
+from src.utils import device_from_arg, load_detector, load_temperature, set_seed
 
 
-CONDITIONS = ["clean", "jpeg30", "jpeg50", "jpeg70", "jpeg90", "blur0.5", "blur1.0", "blur2.0",
-              "resize0.5", "resize0.25", "noise0.02", "noise0.05", "noise0.10", "color", "crop"]
+CONDITIONS = list(EVALUATION_CONDITIONS)
 
 
-def corruption_for(name: str):
-    if name == "clean":
-        return None
-    if name.startswith("jpeg"):
-        return lambda image: apply_condition(image, "jpeg", name)
-    if name.startswith("blur"):
-        return lambda image: apply_condition(image, "blur", name)
-    if name.startswith("resize"):
-        return lambda image: apply_condition(image, "resize", name)
-    if name.startswith("noise"):
-        return lambda image: apply_condition(image, "noise", name)
-    if name in {"color", "crop"}:
-        return lambda image: apply_condition(image, name)
-    raise ValueError(f"Unsupported condition {name}")
+def corruption_for(name: str, seed: int = 42):
+    return deterministic_corruption(name, seed)
 
 
 @torch.inference_mode()
@@ -56,8 +43,10 @@ def main() -> None:
     parser.add_argument("--batch-size", type=int, default=64)
     parser.add_argument("--workers", type=int, default=4)
     parser.add_argument("--device", default="auto")
+    parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--calibration", help="temperature.json from src.calibrate")
     args = parser.parse_args()
+    set_seed(args.seed)
     device = device_from_arg(args.device)
     model, checkpoint = load_detector(args.checkpoint, device)
     image_size = checkpoint.get("image_size", 224)
@@ -65,16 +54,26 @@ def main() -> None:
     temperature = load_temperature(args.calibration)
     requested = CONDITIONS if args.condition == "all" else [args.condition]
     results = []
+    auc_by_condition = {}
     for condition in requested:
-        dataset = ImageDataset(manifest, EvaluationTransform(image_size), corruption=corruption_for(condition))
+        dataset = ImageDataset(
+            manifest,
+            EvaluationTransform(image_size),
+            corruption=corruption_for(condition, args.seed),
+        )
         loader = DataLoader(dataset, batch_size=args.batch_size, shuffle=False, num_workers=args.workers,
-                            pin_memory=device.type == "cuda", persistent_workers=args.workers > 0)
+                            pin_memory=device.type == "cuda", persistent_workers=False)
         auc, accuracy, count = score(model, loader, device, temperature)
+        auc_by_condition[condition] = auc
         results.append({"condition": condition, "roc_auc": round(auc, 6), "accuracy@0.5": round(accuracy, 6), "n": count})
         print(results[-1])
-    robust_rows = [r["roc_auc"] for r in results if r["condition"] != "clean"]
     if args.condition == "all":
-        results.append({"condition": "mean_robust", "roc_auc": round(sum(robust_rows) / len(robust_rows), 6), "accuracy@0.5": "", "n": len(manifest)})
+        robust_rows = [auc for condition, auc in auc_by_condition.items() if condition != "clean"]
+        mean_robust = sum(robust_rows) / len(robust_rows)
+        clean_auc = auc_by_condition["clean"]
+        combined_score = 0.5 * clean_auc + 0.5 * mean_robust
+        results.append({"condition": "mean_robust", "roc_auc": round(mean_robust, 6), "accuracy@0.5": "", "n": len(manifest)})
+        results.append({"condition": "combined_score", "roc_auc": round(combined_score, 6), "accuracy@0.5": "", "n": len(manifest)})
     Path(args.output).parent.mkdir(parents=True, exist_ok=True)
     with open(args.output, "w", newline="", encoding="utf-8") as handle:
         writer = csv.DictWriter(handle, fieldnames=["condition", "roc_auc", "accuracy@0.5", "n"])
@@ -85,4 +84,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

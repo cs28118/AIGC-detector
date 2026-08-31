@@ -42,12 +42,19 @@ def load_temperature(path: str | None) -> float:
 
 
 def load_detector(checkpoint_path: str, device: torch.device):
-    from src.model import build_model
+    from src.model import FORENSIC_BRANCH_VERSION, FORENSIC_FEATURES, build_model
 
     checkpoint = torch.load(checkpoint_path, map_location=device, weights_only=False)
     architecture = checkpoint["model_config"].get("architecture", "convnext_tiny")
-    if architecture != "convnext_tiny":
-        raise ValueError(f"Unsupported checkpoint architecture: {architecture}")
-    model = build_model(pretrained=False, use_frequency=checkpoint["model_config"]["use_frequency"])
+    if checkpoint["model_config"].get("forensic_branch") != FORENSIC_BRANCH_VERSION:
+        raise ValueError(
+            "This checkpoint predates the multi-domain forensic branch and is incompatible with this code."
+        )
+    model = build_model(
+        pretrained=False,
+        use_frequency=checkpoint["model_config"]["use_frequency"],
+        architecture=architecture,
+        forensic_features=checkpoint["model_config"].get("forensic_features", FORENSIC_FEATURES),
+    )
     model.load_state_dict(checkpoint["model_state"])
     return model.to(device).eval(), checkpoint

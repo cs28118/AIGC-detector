@@ -28,6 +28,8 @@ def read_manifest(path: str | Path, split: str | None = None) -> pd.DataFrame:
         manifest = manifest[manifest["split"] == split].copy()
     if manifest.empty:
         raise ValueError(f"No records available in {path} for split={split!r}.")
+    if manifest["label"].nunique() != 2:
+        raise ValueError(f"Split {split!r} must contain both real and AI labels for ROC-AUC.")
     missing_paths = [p for p in manifest.image_path if not Path(p).is_file()]
     if missing_paths:
         raise FileNotFoundError(f"{len(missing_paths)} manifest image paths do not exist. First: {missing_paths[0]}")
@@ -60,7 +62,8 @@ class ImageDataset(Dataset):
         with Image.open(row.image_path) as image:
             image = image.convert("RGB")
             if self.corruption is not None:
-                image = self.corruption(image)
+                group_id = row.get("group_id", "")
+                identifier = f"{group_id}:{Path(row.image_path).name}"
+                image = self.corruption(image, identifier)
             tensor = self.transform(image)
         return tensor, torch.tensor(row.label, dtype=torch.float32), str(row.image_path)
-

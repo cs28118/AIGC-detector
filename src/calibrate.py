@@ -18,7 +18,11 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Fit post-hoc probability temperature scaling.")
     parser.add_argument("--checkpoint", required=True)
     parser.add_argument("--manifest", required=True)
-    parser.add_argument("--split", default="val")
+    parser.add_argument(
+        "--split",
+        default="calibration",
+        help="Use a split separate from checkpoint selection (default: calibration).",
+    )
     parser.add_argument("--output", default="artifacts/temperature.json")
     parser.add_argument("--batch-size", type=int, default=64)
     parser.add_argument("--workers", type=int, default=4)
@@ -53,4 +57,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

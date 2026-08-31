@@ -3,6 +3,7 @@ __pycache__/
 data/
 artifacts/
 checkpoints/
-*.pt
+convnext_detector/
 *.pth
 *.onnx
+tests/
