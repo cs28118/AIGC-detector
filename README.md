@@ -32,6 +32,10 @@ The manifest builder assigns deterministic group-safe train/validation/calibrati
 - scikit-learn
 - Google Colab
 
+## Access to our model trained
+
+The pytorch file is available for download under release `v2.0 model`, tag `v2.0`
+
 ## Setup and Installation
 
 Prerequisites: Python 3.10+ and PyTorch-compatible hardware. CUDA available GPU is highly recommended. CPU execution is supported.
