@@ -94,7 +94,7 @@ kaggle datasets download \
   --unzip
 ```
 
-> We also use [GANGen](https://github.com/chuangchuangtan/FreqNet-DeepfakeDetection) and [UniversalFakeDetect](https://github.com/WisconsinAIVision/UniversalFakeDetect) datasets. For these two dataset, we pick similar amount from each subfolder and combine it with CiFake dataset.
+> We also use [GANGen](https://github.com/chuangchuangtan/FreqNet-DeepfakeDetection) and [UniversalFakeDetect](https://github.com/WisconsinAIVision/UniversalFakeDetect) datasets. For these two dataset, we pick similar amount from each subfolder and combine it with CiFake dataset. The sampling below shows an example of our used dataset.
 
 ```
 Sampling cifake_colab.csv
@@ -299,3 +299,7 @@ The equal-weight clean/robust AUC is **0.9971**. JPEG, strong blur, strong noise
   1. [CIFAKE](https://www.kaggle.com/datasets/birdy654/cifake-real-and-ai-generated-synthetic-images)
   2. [GANGen](https://github.com/chuangchuangtan/FreqNet-DeepfakeDetection)
   3. [UniversalFakeDetect](https://github.com/WisconsinAIVision/UniversalFakeDetect)
+ 
+## Team member contribution
+- Lim Chun Sheng - code, training of model, testing, video making
+- Ng De Bing - documentation, testing
